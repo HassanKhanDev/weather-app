@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <title>Weather APP || Hassan Khan</title>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(to bottom, #000428, #1165af);
+      min-height: 100vh;
+      color: white;
+    }
+    
+    .weather-card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+    }
+    
+    .weather-icon {
+      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.5));
+    }
+    
+    .hourly-scroll {
+      scrollbar-width: none;
+    }
+    
+    .hourly-scroll::-webkit-scrollbar {
+      display: none;
+    }
+    
+    #map {
+      height: 200px;
+      border-radius: 15px;
+    }
+    
+    .tab-button.active {
+      border-bottom: 2px solid white;
+    }
+    
+    .day-card:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+    
+    .search-container {
+      transition: all 0.3s ease;
+    }
+    
+    .search-input {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .search-results {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    
+    .search-result-item:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+  </style>
+  
+</head>
+<body class="flex flex-col">
+  <!-- Top Navigation -->
+  <div class="flex justify-between items-center p-4">
+    <div class="relative w-full max-w-md">
+      <div class="search-container flex items-center rounded-full bg-white bg-opacity-20 px-4 py-2">
+        <i class="fas fa-search mr-2"></i>
+        <input 
+          type="text" 
+          id="search-input" 
+          placeholder="Search for a city..." 
+          class="search-input bg-transparent border-none outline-none w-full text-white placeholder-white placeholder-opacity-70"
+        >
+        <button id="close-search" class="ml-2 hidden">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div id="search-results" class="search-results absolute left-0 right-0 mt-2 weather-card hidden z-10">
+        <!-- Search results will appear here -->
+      </div>
+    </div>
+    <div class="flex space-x-4 ml-4">
+      <button class="w-8 h-8 flex items-center justify-center rounded-full bg-white bg-opacity-20">
+        <i class="fas fa-map-marker-alt" id="use-location"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="flex-1 overflow-y-auto pb-20">
+    <!-- Current Weather -->
+    <div class="weather-card mx-4 p-6 mb-4">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h2 id="current-location" class="text-xl font-semibold">Loading...</h2>
+          <p id="current-date" class="text-sm opacity-80">-</p>
+        </div>
+        <div class="text-right">
+          <div id="current-temp" class="text-4xl font-bold">-°</div>
+          <p id="current-desc" class="text-sm capitalize">-</p>
+        </div>
+      </div>
+      
+      <div class="flex justify-between items-center">
+        <div id="current-weather-icon" class="weather-icon text-6xl">
+          <i class="fas fa-question"></i>
+        </div>
+        <div class="text-right">
+          <div class="text-sm">H: <span id="current-high">-°</span> L: <span id="current-low">-°</span></div>
+          <div class="text-sm">Humidity: <span id="current-humidity">-%</span></div>
+          <div class="text-sm">Wind: <span id="current-wind">- km/h</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Hourly Forecast -->
+    <div class="weather-card mx-4 p-4 mb-4">
+      <h3 class="font-medium mb-3">24-Hour Forecast</h3>
+      <div class="flex overflow-x-auto pb-2 hourly-scroll space-x-4" id="hourly-forecast">
+        <!-- Hourly items will be added here by JavaScript -->
+        <div class="text-center">
+          <p class="text-sm">Loading...</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 7-Day Forecast -->
+    <div class="weather-card mx-4 p-4 mb-4">
+      <h3 class="font-medium mb-3">7-Day Forecast</h3>
+      <div id="daily-forecast">
+        <!-- Daily items will be added here by JavaScript -->
+        <div class="text-center py-4">
+          <p>Loading forecast...</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Map -->
+    <div class="weather-card mx-4 p-4">
+      <h3 class="font-medium mb-3">Map</h3>
+      <div id="map"></div>
+    </div>
+    
+    <!-- Air Quality and Other Info -->
+    <div class="grid grid-cols-2 gap-4 mx-4 mt-4">
+      <div class="weather-card p-4">
+        <h3 class="font-medium mb-2">Air Quality</h3>
+        <div class="flex items-center">
+          <div class="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center mr-2">
+            <i class="fas fa-wind"></i>
+          </div>
+          <div>
+            <div id="air-quality" class="font-semibold">-</div>
+            <div class="text-xs opacity-80">Loading...</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="weather-card p-4">
+        <h3 class="font-medium mb-2">UV Index</h3>
+        <div class="flex items-center">
+          <div class="w-10 h-10 rounded-full bg-yellow-500 flex items-center justify-center mr-2">
+            <i class="fas fa-sun"></i>
+          </div>
+          <div>
+            <div id="uv-index" class="font-semibold">-</div>
+            <div class="text-xs opacity-80">Loading...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Bottom Navigation -->
+  <div class="fixed bottom-0 left-0 right-0 bg-black bg-opacity-70 backdrop-filter backdrop-blur-lg flex justify-around py-3">
+    <button class="tab-button active flex flex-col items-center text-sm" data-tab="today">
+      <i class="fas fa-cloud-sun mb-1"></i>
+      <span>Today</span>
+    </button>
+    <button class="tab-button flex flex-col items-center text-sm" data-tab="forecast">
+      <i class="fas fa-calendar-day mb-1"></i>
+      <span>Forecast</span>
+    </button>
+    <button class="tab-button flex flex-col items-center text-sm" data-tab="map">
+      <i class="fas fa-map-marked-alt mb-1"></i>
+      <span>Map</span>
+    </button>
+    <button class="tab-button flex flex-col items-center text-sm" data-tab="info">
+      <i class="fas fa-info-circle mb-1"></i>
+      <span>Info</span>
+    </button>
+    
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
